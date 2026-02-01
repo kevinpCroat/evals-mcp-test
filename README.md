@@ -201,6 +201,35 @@ Each benchmark outputs JSON with scoring details:
 - Idempotency validation
 - terraform plan validation (no actual deployment)
 
+## Benchmark Completion Log
+
+Completion notes for each benchmark: estimated time, score (where applicable), and main challenges.
+
+| Benchmark | Category | Est. time | Challenges / notes |
+|-----------|----------|-----------|--------------------|
+| [bug-fixing-001](benchmarks/bug-fixing-001/) | Quality | ~15 min | Off-by-one in date range; single-line fix, regression suite must stay green. |
+| [testing-001](benchmarks/testing-001/) | Quality | ~35 min | Mutation score + coverage; test file can be gitignored—use `git add -f` if needed. |
+| [greenfield-001](benchmarks/greenfield-001/) | Creation | ~40 min | URL shortener API from scratch; verification script test-percentage bug needed fixing for correct score. |
+| [refactoring-001](benchmarks/refactoring-001/) | Evolution | ~35 min | Preserve behavior while reducing complexity/duplication; 59 tests must not regress. |
+| [code-migration-001](benchmarks/code-migration-001/) | Evolution | ~35 min | SQLAlchemy 1.4 → 2.0; session/query API and relationship changes. |
+| [debugging-001](benchmarks/debugging-001/) | Quality | ~25 min | LRU cache eviction bug; root-cause analysis and fix. |
+| [maintenance-001](benchmarks/maintenance-001/) | Evolution | ~25 min | Dependency bumps and real CVE fixes. |
+| [documentation-001](benchmarks/documentation-001/) | Knowledge | ~15 min | Document undocumented HTTP client; clarity and accuracy matter. |
+| [rewriting-001](benchmarks/rewriting-001/) | Evolution | ~25 min | Recursive → iterative tree traversal; preserve behavior and performance. |
+| [code-review-001](benchmarks/code-review-001/) | Quality | ~30 min | Find 11 planted bugs; format and line numbers must match verification. |
+| [api-design-001](benchmarks/api-design-001/) | Creation | ~45 min | OpenAPI 3.0 e-commerce spec; 25+ paths, schemas, request/response bodies. |
+| [data-modelling-001](benchmarks/data-modelling-001/) | Creation | ~40 min | Blog schema with SQLAlchemy + Alembic; relationships, indexes, migration. |
+| [security-001](benchmarks/security-001/) | Quality | ~45 min | Fix 10 OWASP vulns (SQLi, XSS, secrets, etc.); SECURITY_AUDIT.md; Bandit clean. |
+| [performance-001](benchmarks/performance-001/) | Quality | ~30 min | Optimize from profiler data; target 10x+, preserve API; reference ~15,000x speedup. |
+| [legacy-comprehension-001](benchmarks/legacy-comprehension-001/) | Knowledge | ~35 min | 20 Q&A on 845-line legacy code; answers.json format and fuzzy matching. |
+| [architecture-001](benchmarks/architecture-001/) | Creation | ~50 min | ADRs, diagrams, trade-offs; LLM-as-judge scoring—local run may not hit full points. |
+| [concurrency-001](benchmarks/concurrency-001/) | Quality | ~30 min | Fix races in cache, counter, worker pool; 100 consecutive passes; locks/Queue. |
+| [prototyping-001](benchmarks/prototyping-001/) | Creation | ~20 min | File-watching CLI POC; minimal, working solution. |
+| [infrastructure-001](benchmarks/infrastructure-001/) | Operations | ~45 min | Terraform: VPC, ECS, RDS, ALB, S3, Secrets Manager. ECS↔RDS SG cycle broken with `aws_security_group_rule`; verification security grep expects 80/443/alb on same line; plan needs AWS credentials (e.g. aws configure). |
+| [porting-001](benchmarks/porting-001/) | Evolution | ~35 min | Python → TypeScript text analyzer; Jest tests, ESLint, idiomatic TS. |
+
+**Rough total for full suite:** ~8 hours (with parallelization and reuse).
+
 ## Benchmark Structure
 
 Each benchmark follows a standard structure:
