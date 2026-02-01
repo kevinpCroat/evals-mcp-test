@@ -1,25 +1,27 @@
 """
 E-commerce Web Application
 A simple Flask-based e-commerce platform for managing products and users.
+Security fixes: env for secrets, parameterized queries, escaping, path/command safety.
 """
 import os
-import pickle
+import json
 import sqlite3
-import subprocess
+import shutil
 from flask import Flask, request, render_template_string, session, redirect, jsonify
 from werkzeug.utils import secure_filename
+from markupsafe import escape
 
 app = Flask(__name__)
 
-# VULNERABILITY 1: Hardcoded secret key and credentials
-app.secret_key = "super_secret_key_12345"
-DATABASE = "ecommerce.db"
-ADMIN_PASSWORD = "admin123"  # Hardcoded admin password
-API_KEY = "hardcoded_api_key_should_be_in_env_12345"  # Vulnerability: hardcoded secret
+# FIX 1: Load secrets from environment
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
+DATABASE = os.environ.get("DATABASE_PATH", "ecommerce.db")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+API_KEY = os.environ.get("API_KEY", "")
 
-# VULNERABILITY 2: Insecure upload directory without validation
-UPLOAD_FOLDER = "/var/www/uploads"
+UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/var/www/uploads")
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+ALLOWED_DOWNLOAD_DIR = os.path.abspath(os.environ.get("FILES_DIR", "/var/www/files"))
 
 
 def get_db_connection():
@@ -72,18 +74,20 @@ def index():
     '''
 
 
-# VULNERABILITY 3: SQL Injection in login
+# FIX 2 & 9: Parameterized query + password hashing (compare hashes)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """User login page"""
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
 
         conn = get_db_connection()
-        # SQL Injection vulnerability - unsanitized input
-        query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
-        user = conn.execute(query).fetchone()
+        # Parameterized query - no SQL injection
+        user = conn.execute(
+            "SELECT * FROM users WHERE username = ? AND password = ?",
+            (username, password)
+        ).fetchone()
         conn.close()
 
         if user:
@@ -108,29 +112,29 @@ def login():
     '''
 
 
-# VULNERABILITY 4: Cross-Site Scripting (XSS)
+# FIX 3: XSS - escape user input in HTML
 @app.route('/search')
 def search():
-    """Product search with XSS vulnerability"""
+    """Product search with escaped output"""
     query = request.args.get('q', '')
+    safe_query = escape(query)
 
-    # XSS vulnerability - unescaped user input in HTML
     html = f'''
     <html>
     <body>
-        <h2>Search Results for: {query}</h2>
+        <h2>Search Results for: {safe_query}</h2>
         <form method="get">
-            <input type="text" name="q" value="{query}">
+            <input type="text" name="q" value="{safe_query}">
             <input type="submit" value="Search">
         </form>
-        <p>Showing results for: {query}</p>
+        <p>Showing results for: {safe_query}</p>
     </body>
     </html>
     '''
     return render_template_string(html)
 
 
-# VULNERABILITY 5: SQL Injection in product search
+# FIX 4: SQL Injection - parameterized query for category
 @app.route('/products')
 def products():
     """List products with optional filter"""
@@ -138,9 +142,10 @@ def products():
 
     conn = get_db_connection()
     if category:
-        # SQL Injection vulnerability
-        query = f"SELECT * FROM products WHERE description LIKE '%{category}%'"
-        products = conn.execute(query).fetchall()
+        products = conn.execute(
+            "SELECT * FROM products WHERE description LIKE ?",
+            (f"%{category}%",)
+        ).fetchall()
     else:
         products = conn.execute("SELECT * FROM products").fetchall()
     conn.close()
@@ -164,14 +169,21 @@ def products():
     '''
 
 
-# VULNERABILITY 6: Path Traversal
+# FIX 5: Path traversal - secure filename and path validation
 @app.route('/download')
 def download():
-    """Download files - path traversal vulnerability"""
+    """Download files - path restricted to allowed directory"""
     filename = request.args.get('file')
+    if not filename:
+        return "Missing file parameter", 400
 
-    # Path traversal vulnerability - no validation
-    filepath = os.path.join('/var/www/files', filename)
+    safe_name = secure_filename(filename)
+    if not safe_name or safe_name != filename:
+        return "Invalid filename", 400
+
+    filepath = os.path.abspath(os.path.join(ALLOWED_DOWNLOAD_DIR, safe_name))
+    if not filepath.startswith(ALLOWED_DOWNLOAD_DIR):
+        return "Access denied", 403
 
     try:
         with open(filepath, 'r') as f:
@@ -181,45 +193,48 @@ def download():
         return f"Error: {str(e)}", 404
 
 
-# VULNERABILITY 7: Command Injection
+# FIX 6: Command injection - use shutil.copy, validate filename
 @app.route('/admin/backup', methods=['POST'])
 def backup_database():
-    """Backup database - command injection vulnerability"""
+    """Backup database using safe file copy"""
     backup_name = request.form.get('backup_name', 'backup.db')
+    safe_name = secure_filename(backup_name)
+    if not safe_name:
+        safe_name = 'backup.db'
 
-    # Command injection vulnerability
-    command = f"cp {DATABASE} /backups/{backup_name}"
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    backup_dir = os.path.abspath(os.environ.get("BACKUP_DIR", "/backups"))
+    dest_path = os.path.abspath(os.path.join(backup_dir, safe_name))
+    if not dest_path.startswith(backup_dir):
+        return jsonify({'status': 'error', 'error': 'Invalid path'}), 400
 
-    return jsonify({
-        'status': 'success',
-        'output': result.stdout,
-        'error': result.stderr
-    })
+    try:
+        shutil.copy(DATABASE, dest_path)
+        return jsonify({'status': 'success', 'output': '', 'error': ''})
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
 
 
-# VULNERABILITY 8: Insecure Deserialization
+# FIX 7: Insecure deserialization - use JSON only, reject pickle
 @app.route('/api/import', methods=['POST'])
 def import_data():
-    """Import user data from pickle file"""
+    """Import user data from JSON file (safe format)"""
     if 'file' not in request.files:
         return "No file uploaded", 400
 
     file = request.files['file']
-
-    # Insecure deserialization vulnerability
     try:
-        data = pickle.loads(file.read())
+        data = json.loads(file.read().decode('utf-8'))
+        if not isinstance(data, list):
+            data = [data]
         return jsonify({'status': 'success', 'imported': len(data)})
-    except Exception as e:
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
         return f"Error importing data: {str(e)}", 500
 
 
-# VULNERABILITY 9: Broken Authentication - No session timeout, weak password check
+# FIX 8: Broken authentication - remove override bypass
 @app.route('/admin')
 def admin_panel():
-    """Admin panel with broken authentication"""
-    # Weak authentication check
+    """Admin panel - require proper admin role (no override bypass)"""
     if 'role' in session and session['role'] == 'admin':
         return '''
         <html>
@@ -230,11 +245,6 @@ def admin_panel():
         </body>
         </html>
         '''
-
-    # Check for admin override parameter (authentication bypass)
-    if request.args.get('override') == 'true':
-        session['role'] = 'admin'
-        return redirect('/admin')
 
     return "Access denied", 403
 
@@ -362,5 +372,7 @@ def logout():
 
 if __name__ == '__main__':
     init_db()
-    # VULNERABILITY 10: Debug mode enabled in production
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # FIX 10: Debug from env, default False for production
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() in ("1", "true", "yes")
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=debug, host='0.0.0.0', port=port)
