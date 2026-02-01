@@ -1,0 +1,37 @@
+{
+  "benchmark": "legacy-comprehension-001",
+  "timestamp": "2026-02-01T20:47:47Z",
+  "passed": true,
+  "score": 99.68,
+  "max_score": 100,
+  "components": {
+    "qa_accuracy": {
+      "score": 99.44,
+      "weight": 40,
+      "weighted_score": 39.776
+    },
+    "dependency_mapping": {
+      "score": 100.0,
+      "weight": 30,
+      "weighted_score": 30.00
+    },
+    "impact_analysis": {
+      "score": 100.0,
+      "weight": 20,
+      "weighted_score": 20.00
+    },
+    "analysis_quality": {
+      "score": 99.06,
+      "weight": 10,
+      "weighted_score": 9.906
+    }
+  },
+  "summary": {
+    "total_questions": 20,
+    "answered": 20,
+    "correct": 20,
+    "partial": 0,
+    "incorrect": 0,
+    "unanswered": 0
+  }
+}
