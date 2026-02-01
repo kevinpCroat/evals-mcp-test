@@ -3,10 +3,16 @@ Data Processor - Finds duplicate entries and generates statistics
 
 This module processes log data to find duplicate user sessions and
 compute session statistics. It's used for analyzing user behavior patterns.
+Optimized: parse each log line once, use dict for grouping, sorted() for top users.
 """
 
 import re
+from collections import defaultdict
 from typing import List, Dict, Tuple
+
+# Precompile regexes for reuse
+_USER_RE = re.compile(r'user_id=(\w+)')
+_DURATION_RE = re.compile(r'duration=(\d+)')
 
 
 class LogProcessor:
@@ -14,10 +20,20 @@ class LogProcessor:
 
     def __init__(self):
         self.logs = []
+        # Parsed once: list of (user_id, duration, line_idx) for lines with user_id
+        self._parsed: List[Tuple[str, int, int]] = []
 
     def load_logs(self, log_entries: List[str]) -> None:
-        """Load log entries for processing."""
+        """Load log entries for processing. Parses each line once and caches."""
         self.logs = log_entries
+        self._parsed = []
+        for line_idx, log in enumerate(self.logs):
+            user_match = _USER_RE.search(log)
+            duration_match = _DURATION_RE.search(log)
+            user_id = user_match.group(1) if user_match else None
+            duration = int(duration_match.group(1)) if duration_match else 0
+            if user_id is not None:
+                self._parsed.append((user_id, duration, line_idx))
 
     def find_duplicate_sessions(self) -> List[Tuple[str, List[int]]]:
         """
@@ -26,33 +42,12 @@ class LogProcessor:
         Returns:
             List of tuples (user_id, [line_numbers]) for users with duplicate sessions
         """
-        duplicates = []
+        # Group original line indices by user_id (one pass over parsed data)
+        user_to_lines: Dict[str, List[int]] = defaultdict(list)
+        for user_id, _, line_idx in self._parsed:
+            user_to_lines[user_id].append(line_idx)
 
-        # Parse each log entry to extract user_id
-        for i in range(len(self.logs)):
-            match = re.search(r'user_id=(\w+)', self.logs[i])
-            if match:
-                user_id = match.group(1)
-
-                # Check if this user_id appears elsewhere (O(n²) comparison)
-                line_numbers = []
-                for j in range(len(self.logs)):
-                    match2 = re.search(r'user_id=(\w+)', self.logs[j])
-                    if match2 and match2.group(1) == user_id:
-                        line_numbers.append(j)
-
-                # Only include if there are duplicates
-                if len(line_numbers) > 1:
-                    # Check if we already added this user
-                    already_added = False
-                    for existing_user, _ in duplicates:
-                        if existing_user == user_id:
-                            already_added = True
-                            break
-
-                    if not already_added:
-                        duplicates.append((user_id, line_numbers))
-
+        duplicates = [(uid, line_nums) for uid, line_nums in user_to_lines.items() if len(line_nums) > 1]
         return duplicates
 
     def compute_session_stats(self) -> Dict[str, int]:
@@ -62,25 +57,10 @@ class LogProcessor:
         Returns:
             Dictionary mapping user_id to total session time in seconds
         """
-        stats = {}
-
-        # Process each log entry
-        for log in self.logs:
-            # Extract user_id and duration (repeated regex matching)
-            user_match = re.search(r'user_id=(\w+)', log)
-            duration_match = re.search(r'duration=(\d+)', log)
-
-            if user_match and duration_match:
-                user_id = user_match.group(1)
-                duration = int(duration_match.group(1))
-
-                # Sum up durations for each user (inefficient repeated lookups)
-                if user_id in stats:
-                    stats[user_id] = stats[user_id] + duration
-                else:
-                    stats[user_id] = duration
-
-        return stats
+        stats: Dict[str, int] = defaultdict(int)
+        for user_id, duration, _ in self._parsed:
+            stats[user_id] += duration
+        return dict(stats)
 
     def get_top_users(self, stats: Dict[str, int], n: int = 10) -> List[Tuple[str, int]]:
         """
@@ -93,18 +73,8 @@ class LogProcessor:
         Returns:
             List of (user_id, total_time) tuples, sorted by time descending
         """
-        # Inefficient bubble sort instead of using built-in sort
         items = list(stats.items())
-
-        # Bubble sort by session time (O(n²))
-        for i in range(len(items)):
-            for j in range(len(items) - 1 - i):
-                if items[j][1] < items[j + 1][1]:
-                    # Swap
-                    temp = items[j]
-                    items[j] = items[j + 1]
-                    items[j + 1] = temp
-
+        items.sort(key=lambda x: x[1], reverse=True)
         return items[:n]
 
     def process_all(self) -> Dict:
