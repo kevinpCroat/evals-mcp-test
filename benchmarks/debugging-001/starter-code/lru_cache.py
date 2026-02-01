@@ -64,15 +64,9 @@ class LRUCache:
 
         # If at capacity, evict least recently used
         if len(self._cache) >= self.capacity:
-            # BUG: This gets the first item, but we should remove it BEFORE
-            # adding the new item. The order matters when the key being added
-            # might have been the one we're trying to evict.
             lru_key = next(iter(self._cache))
-            self._cache[lru_key] = value
-            self._cache.move_to_end(lru_key)
-        else:
-            # Add new item
-            self._cache[key] = value
+            del self._cache[lru_key]
+        self._cache[key] = value
 
     def size(self) -> int:
         """

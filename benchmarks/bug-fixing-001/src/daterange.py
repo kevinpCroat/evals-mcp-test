@@ -92,7 +92,7 @@ def get_business_days(start_date: datetime, end_date: datetime) -> int:
     business_days = 0
     current_date = start_date
 
-    while current_date < end_date:  # BUG: Should be <= to include end_date
+    while current_date <= end_date:
         if is_business_day(current_date):
             business_days += 1
         current_date += timedelta(days=1)

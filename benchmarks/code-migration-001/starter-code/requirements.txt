@@ -1,5 +1,5 @@
-# SQLAlchemy 1.4 - OLD VERSION with deprecated APIs
-SQLAlchemy==1.4.48
+# SQLAlchemy 2.0 - migrated from 1.4
+SQLAlchemy==2.0.23
 
 # Testing dependencies
 pytest==7.4.3

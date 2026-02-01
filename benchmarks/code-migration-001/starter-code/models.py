@@ -1,21 +1,22 @@
 """
-Database models using SQLAlchemy 1.4 patterns.
-This code uses deprecated APIs that need migration to SQLAlchemy 2.0.
+Database models using SQLAlchemy 2.0 patterns.
 """
-from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from typing import Optional
+from sqlalchemy import create_engine, String, Integer, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True)
-    username = Column(String(50), nullable=False, unique=True)
-    email = Column(String(100), nullable=False)
-    full_name = Column(String(100))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String(100), nullable=False)
+    full_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     posts = relationship("Post", back_populates="author")
 
@@ -26,10 +27,10 @@ class User(Base):
 class Post(Base):
     __tablename__ = 'posts'
 
-    id = Column(Integer, primary_key=True)
-    title = Column(String(200), nullable=False)
-    content = Column(String(5000))
-    author_id = Column(Integer, ForeignKey('users.id'))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    content: Mapped[Optional[str]] = mapped_column(String(5000), nullable=True)
+    author_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id'))
 
     author = relationship("User", back_populates="posts")
 
@@ -38,11 +39,11 @@ class Post(Base):
 
 
 def get_engine(database_url='sqlite:///test.db'):
-    """Create database engine using old-style create_engine."""
+    """Create database engine (SQLAlchemy 2.0 style)."""
     return create_engine(database_url)
 
 
 def get_session(engine):
-    """Create session using old sessionmaker pattern."""
+    """Create session using sessionmaker (SQLAlchemy 2.0)."""
     Session = sessionmaker(bind=engine)
     return Session()
