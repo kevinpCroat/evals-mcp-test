@@ -1,0 +1,468 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Order Management API
+  version: 1.0.0
+  description: REST API for e-commerce platform - products, customers, orders, payments, shipments, cart, reviews.
+
+servers:
+  - url: https://api.example.com
+    description: Production
+  - url: https://staging-api.example.com
+    description: Staging
+
+paths:
+  /v1  /v1/products:
+    get:
+      summary: List products
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+          description: Page number
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+          description: Items per page
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Search query
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductList' }
+        '401': { description: Unauthorized }
+        '500': { description: Internal Server Error }
+    post:
+      summary: Create product
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Product' }
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+        '401': { description: Unauthorized }
+        '404': { description: Not Found }
+  /v1/products/{productId}:
+    get:
+      summary: Get product
+      parameters: [{ name: productId, in: path, required: true, schema: { type: string }, description: Product ID }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    put:
+      summary: Update product
+      parameters: [{ name: productId, in: path, required: true, schema: { type: string }, description: Product ID }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Product' }
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    patch:
+      summary: Partial update product
+      parameters: [{ name: productId, in: path, required: true, schema: { type: string }, description: Product ID }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Product' }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    delete:
+      summary: Delete product
+      parameters: [{ name: productId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '204': { description: No Content }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/products/{productId}/inventory:
+    get:
+      summary: Get product inventory
+      parameters: [{ name: productId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/categories:
+    get:
+      summary: List categories
+      responses:
+        '200': { description: OK }
+        '401': { description: Unauthorized }
+  /v1/categories/{categoryId}:
+    get:
+      summary: Get category
+      parameters: [{ name: categoryId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/orders:
+    get:
+      summary: List orders
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer }
+          description: Page number
+        - name: limit
+          in: query
+          schema: { type: integer }
+          description: Page size
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Order' } }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+    post:
+      summary: Create order
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Order' }
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+        '401': { description: Unauthorized }
+        '422': { description: Unprocessable Entity }
+  /v1/orders/{orderId}:
+    get:
+      summary: Get order
+      parameters: [{ name: orderId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    put:
+      summary: Update order
+      parameters: [{ name: orderId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    delete:
+      summary: Cancel order
+      parameters: [{ name: orderId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '204': { description: No Content }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/orders/{orderId}/items:
+    get:
+      summary: Get order items
+      parameters: [{ name: orderId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/customers:
+    get:
+      summary: List customers
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer }
+          description: Page number
+        - name: limit
+          in: query
+          schema: { type: integer }
+          description: Page size
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        '401': { description: Unauthorized }
+    post:
+      summary: Register customer
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Customer' }
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+        '409': { description: Conflict }
+  /v1/customers/{customerId}:
+    get:
+      summary: Get customer
+      parameters: [{ name: customerId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    put:
+      summary: Update customer
+      parameters: [{ name: customerId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    delete:
+      summary: Delete customer
+      parameters: [{ name: customerId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/customers/{customerId}/addresses:
+    get:
+      summary: Get customer addresses
+      parameters: [{ name: customerId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/cart:
+    get:
+      summary: Get cart
+      responses:
+        '200': { description: OK }
+        '401': { description: Unauthorized }
+    post:
+      summary: Create/update cart
+      responses:
+        '200': { description: OK }
+        '201': { description: Created }
+        '401': { description: Unauthorized }
+    delete:
+      summary: Clear cart
+      responses:
+        '204': { description: No Content }
+        '401': { description: Unauthorized }
+  /v1/cart/items:
+    get:
+      summary: List cart items
+      responses:
+        '200': { description: OK }
+        '401': { description: Unauthorized }
+    post:
+      summary: Add cart item
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+        '401': { description: Unauthorized }
+  /v1/payments:
+    post:
+      summary: Create payment
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+        '401': { description: Unauthorized }
+        '422': { description: Unprocessable Entity }
+  /v1/payments/{paymentId}:
+    get:
+      summary: Get payment
+      parameters: [{ name: paymentId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/shipments:
+    get:
+      summary: List shipments
+      responses:
+        '200': { description: OK }
+        '401': { description: Unauthorized }
+    post:
+      summary: Create shipment
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+        '401': { description: Unauthorized }
+  /v1/shipments/{shipmentId}:
+    get:
+      summary: Get shipment
+      parameters: [{ name: shipmentId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    patch:
+      summary: Update shipment
+      parameters: [{ name: shipmentId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/reviews:
+    get:
+      summary: List reviews
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer }
+          description: Page number
+        - name: limit
+          in: query
+          schema: { type: integer }
+          description: Page size
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array }
+        '401': { description: Unauthorized }
+    post:
+      summary: Create review
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { rating: { type: integer }, comment: { type: string } } }
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+        '401': { description: Unauthorized }
+  /v1/reviews/{reviewId}:
+    get:
+      summary: Get review
+      parameters: [{ name: reviewId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    put:
+      summary: Update review
+      parameters: [{ name: reviewId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+    delete:
+      summary: Delete review
+      parameters: [{ name: reviewId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/auth/login:
+    post:
+      summary: Login
+      responses:
+        '200': { description: OK }
+        '401': { description: Unauthorized }
+        '400': { description: Bad Request }
+  /v1/auth/register:
+    post:
+      summary: Register
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad Request }
+        '409': { description: Conflict }
+  /v1/auth/token:
+    post:
+      summary: Refresh token
+      responses:
+        '200': { description: OK }
+        '401': { description: Unauthorized }
+  /v1/inventory:
+    get:
+      summary: List inventory
+      responses:
+        '200': { description: OK }
+        '401': { description: Unauthorized }
+  /v1/orders/{orderId}/payments:
+    get:
+      summary: Get order payments
+      parameters: [{ name: orderId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+  /v1/products/{productId}/reviews:
+    get:
+      summary: Get product reviews
+      parameters: [{ name: productId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+        '401': { description: Unauthorized }
+
+components:
+  schemas:
+    Product:
+      description: Product with variants and inventory
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        price: { type: number }
+        category: { type: string }
+        description: { type: string }
+    ProductList:
+      description: Paginated list of products
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Product' } }
+        total: { type: integer }
+    Order:
+      description: Order with items and status
+      type: object
+      properties:
+        id: { type: string }
+        customerId: { type: string }
+        status: { type: string }
+        total: { type: number }
+    Customer:
+      description: Customer with addresses
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+    User:
+      description: User account for authentication
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        username: { type: string }
+    Payment:
+      description: Payment transaction
+      type: object
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        amount: { type: number }
+        status: { type: string }
+    Cart:
+      description: Shopping cart with items
+      type: object
+      properties:
+        id: { type: string }
+        items: { type: array }
+        total: { type: number }
+    Error:
+      description: Error response
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
