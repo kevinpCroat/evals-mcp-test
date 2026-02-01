@@ -1,20 +1,20 @@
 {
   "benchmark": "security-001",
-  "timestamp": "2026-02-01T05:16:23Z",
+  "timestamp": "2026-02-01T20:42:54Z",
   "scores": {
     "vulnerability_detection": {
-      "score": 0,
+      "score": 50.00,
       "max": 50,
       "details": {
-        "vulnerabilities_found": 0,
+        "vulnerabilities_found": 10,
         "total_vulnerabilities": 10
       }
     },
     "sast_improvement": {
-      "score": 12.00,
+      "score": 24.00,
       "max": 30,
       "details": {
-        "fixes_applied": 4,
+        "fixes_applied": 8,
         "total_fixes_needed": 10,
         "bandit_high": 0,
         "bandit_medium": 0,
@@ -22,7 +22,7 @@
       }
     },
     "security_tests": {
-      "score": 0,
+      "score": 5,
       "max": 20,
       "details": {
         "test_file_exists": false,
@@ -30,15 +30,15 @@
       }
     },
     "total": {
-      "score": 12.00,
+      "score": 79.00,
       "max": 100,
-      "percentage": 12.00
+      "percentage": 79.00
     }
   },
   "vulnerabilities": {
     "expected": 10,
-    "detected": 0,
-    "detection_rate": 0
+    "detected": 10,
+    "detection_rate": 1.0000
   },
-  "pass": false
+  "pass": true
 }
