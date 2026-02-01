@@ -1,60 +1,56 @@
 """
-Thread-unsafe cache implementation with race conditions.
+Thread-safe cache implementation using threading.Lock.
 
-This cache has multiple concurrency issues:
-1. Check-then-act race condition in get()
-2. Non-atomic updates to shared dictionary
-3. Race conditions in size tracking
+Uses a lock to make get/put/stats and hits/misses/eviction atomic.
 """
 
-import time
+import threading
 from typing import Any, Optional
 
 
 class SimpleCache:
-    """A simple in-memory cache with race conditions."""
+    """A simple in-memory cache, thread-safe via Lock."""
 
     def __init__(self, max_size: int = 100):
         self.cache = {}
         self.max_size = max_size
         self.hits = 0
         self.misses = 0
+        self._lock = threading.Lock()
 
     def get(self, key: str) -> Optional[Any]:
         """Get value from cache. Returns None if not found."""
-        if key in self.cache:
-            # Race condition: cache might be modified between check and access
-            self.hits += 1  # Non-atomic increment
-            return self.cache[key]
-        else:
-            self.misses += 1  # Non-atomic increment
-            return None
+        with self._lock:
+            if key in self.cache:
+                self.hits += 1
+                return self.cache[key]
+            else:
+                self.misses += 1
+                return None
 
     def put(self, key: str, value: Any) -> None:
         """Put value in cache."""
-        # Race condition: size check and insertion are not atomic
-        if len(self.cache) >= self.max_size:
-            # Simple eviction: remove first item
-            # Race condition: multiple threads might try to evict simultaneously
-            if self.cache:
+        with self._lock:
+            if len(self.cache) >= self.max_size and self.cache:
                 first_key = next(iter(self.cache))
                 del self.cache[first_key]
-
-        self.cache[key] = value
+            self.cache[key] = value
 
     def get_stats(self) -> dict:
         """Get cache statistics."""
-        total = self.hits + self.misses
-        hit_rate = self.hits / total if total > 0 else 0.0
-        return {
-            'hits': self.hits,
-            'misses': self.misses,
-            'hit_rate': hit_rate,
-            'size': len(self.cache)
-        }
+        with self._lock:
+            total = self.hits + self.misses
+            hit_rate = self.hits / total if total > 0 else 0.0
+            return {
+                'hits': self.hits,
+                'misses': self.misses,
+                'hit_rate': hit_rate,
+                'size': len(self.cache)
+            }
 
     def clear(self) -> None:
         """Clear the cache."""
-        self.cache = {}
-        self.hits = 0
-        self.misses = 0
+        with self._lock:
+            self.cache = {}
+            self.hits = 0
+            self.misses = 0
