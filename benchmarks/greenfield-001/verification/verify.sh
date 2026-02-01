@@ -190,12 +190,14 @@ tests_details="Tests not run"
 if python3 -m pytest "$SCRIPT_DIR/tests/test_api.py" -v --tb=short > test_results.txt 2>&1; then
     tests_passed=true
     # Count passed tests
-    total_tests=$(grep -c "PASSED" test_results.txt || echo "0")
-    failed_tests=$(grep -c "FAILED" test_results.txt || echo "0")
+    total_tests=$(grep -c "PASSED" test_results.txt 2>/dev/null | tr -d ' \n' || echo "0")
+    failed_tests=$(grep -c "FAILED" test_results.txt 2>/dev/null | tr -d ' \n' || echo "0")
 
     if [ $total_tests -gt 0 ]; then
-        tests_percent=$(python3 -c "print(round(($total_tests / ($total_tests + $failed_tests)) * 100, 2))")
-        tests_score=$(python3 -c "print(min(100, int($tests_percent)))")
+        total_tests=${total_tests:-0}
+        failed_tests=${failed_tests:-0}
+        tests_percent=$(python3 -c 'import sys; t=int(sys.argv[1].strip()); f=int(sys.argv[2].strip()); print(round((t/(t+f))*100, 2) if (t+f)>0 else 0)' "$total_tests" "$failed_tests")
+        tests_score=$(python3 -c 'import sys; p=float(sys.argv[1].strip()); print(min(100, int(p)))' "$tests_percent")
         tests_details="Passed: ${total_tests}, Failed: ${failed_tests} (${tests_percent}%)"
         echo -e "${GREEN}Tests passed: ${total_tests}, failed: ${failed_tests}${NC}" >&2
     else
@@ -204,12 +206,14 @@ if python3 -m pytest "$SCRIPT_DIR/tests/test_api.py" -v --tb=short > test_result
     fi
 else
     tests_passed=false
-    total_tests=$(grep -c "PASSED" test_results.txt || echo "0")
-    failed_tests=$(grep -c "FAILED" test_results.txt || echo "0")
+    total_tests=$(grep -c "PASSED" test_results.txt 2>/dev/null | tr -d ' \n' || echo "0")
+    failed_tests=$(grep -c "FAILED" test_results.txt 2>/dev/null | tr -d ' \n' || echo "0")
 
     if [ $total_tests -gt 0 ]; then
-        tests_percent=$(python3 -c "print(round(($total_tests / ($total_tests + $failed_tests)) * 100, 2))")
-        tests_score=$(python3 -c "print(min(100, int($tests_percent)))")
+        total_tests=${total_tests:-0}
+        failed_tests=${failed_tests:-0}
+        tests_percent=$(python3 -c 'import sys; t=int(sys.argv[1].strip()); f=int(sys.argv[2].strip()); print(round((t/(t+f))*100, 2) if (t+f)>0 else 0)' "$total_tests" "$failed_tests")
+        tests_score=$(python3 -c 'import sys; p=float(sys.argv[1].strip()); print(min(100, int(p)))' "$tests_percent")
         tests_details="Passed: ${total_tests}, Failed: ${failed_tests} (${tests_percent}%)"
         echo -e "${YELLOW}Some tests failed - Passed: ${total_tests}, Failed: ${failed_tests}${NC}" >&2
     else
